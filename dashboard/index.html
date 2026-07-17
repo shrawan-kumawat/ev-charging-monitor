@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EV Charging Monitor - Multi Station</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h1 { font-size: 2.5rem; color: #38bdf8; margin-bottom: 10px; }
+        .header p { color: #94a3b8; }
+        .stations-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .station-card {
+            background: #1e293b;
+            border-radius: 16px;
+            padding: 24px;
+            border: 1px solid #334155;
+        }
+        .station-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #334155;
+        }
+        .station-id {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #f8fafc;
+        }
+        .station-status {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+        .status-available { background: #166534; color: #22c55e; }
+        .status-charging { background: #1e3a5f; color: #3b82f6; }
+        .status-faulted { background: #7f1d1d; color: #ef4444; }
+        .status-preparing { background: #713f12; color: #f59e0b; }
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+        .metric {
+            background: #0f172a;
+            padding: 12px;
+            border-radius: 8px;
+        }
+        .metric-label {
+            font-size: 0.75rem;
+            color: #64748b;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #f8fafc;
+        }
+        .metric-unit {
+            font-size: 0.875rem;
+            color: #64748b;
+            margin-left: 4px;
+        }
+        .refresh-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #38bdf8;
+            color: #0f172a;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .refresh-btn:hover { background: #7dd3fc; }
+        .loading { text-align: center; padding: 40px; color: #94a3b8; }
+        .error { color: #ef4444; text-align: center; padding: 40px; }
+        .timestamp {
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-top: 8px;
+        }
+    </style>
+</head>
+<body>
+    <button class="refresh-btn" onclick="fetchData()">Refresh</button>
+    <div class="header">
+        <h1>EV Charging Monitor</h1>
+        <p>Multi-station real-time telemetry</p>
+    </div>
+    <div class="stations-grid" id="stations">
+        <div class="loading">Loading stations...</div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000/api';
+
+        function formatTime(isoString) {
+            if (!isoString) return '--:--:--';
+            const date = new Date(isoString);
+            return date.toLocaleTimeString();
+        }
+
+        function getStatusClass(status) {
+            const map = {
+                'Available': 'status-available',
+                'Charging': 'status-charging',
+                'Faulted': 'status-faulted',
+                'Preparing': 'status-preparing',
+                'Finishing': 'status-preparing'
+            };
+            return map[status] || 'status-available';
+        }
+
+        async function fetchData() {
+            try {
+                const stationsRes = await fetch(`${API_URL}/stations`);
+                const stations = await stationsRes.json();
+
+                const stationData = await Promise.all(
+                    stations.map(async (station) => {
+                        try {
+                            const telemRes = await fetch(`${API_URL}/telemetry/${station.station_id}`);
+                            const telemetry = await telemRes.json();
+                            const latest = telemetry[telemetry.length - 1] || {};
+                            return { station, latest, telemetry };
+                        } catch (err) {
+                            return { station, latest: {}, telemetry: [] };
+                        }
+                    })
+                );
+
+                renderStations(stationData);
+            } catch (err) {
+                document.getElementById('stations').innerHTML = 
+                    `<div class="error">Error: ${err.message}</div>`;
+            }
+        }
+
+        function renderStations(stationData) {
+            const html = stationData.map(({ station, latest }) => {
+                const status = station.status || latest.status || 'Unknown';
+                const statusClass = getStatusClass(status);
+                
+                const current = latest.current !== undefined ? latest.current : (latest.current_l1 || 0);
+                const voltage = latest.voltage !== undefined ? latest.voltage : (latest.voltage_l1 || 0);
+                const power = latest.power_kw !== undefined ? latest.power_kw : 0;
+                const temp = latest.temperature !== undefined ? latest.temperature : 0;
+                const energy = latest.energy_kwh !== undefined ? latest.energy_kwh : 0;
+
+                return `
+                    <div class="station-card">
+                        <div class="station-header">
+                            <div class="station-id">${station.station_id}</div>
+                            <div class="station-status ${statusClass}">${status}</div>
+                        </div>
+                        <div class="metrics">
+                            <div class="metric">
+                                <div class="metric-label">Power</div>
+                                <div class="metric-value">${power.toFixed(2)}<span class="metric-unit">kW</span></div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-label">Current</div>
+                                <div class="metric-value">${current.toFixed(1)}<span class="metric-unit">A</span></div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-label">Voltage</div>
+                                <div class="metric-value">${voltage.toFixed(1)}<span class="metric-unit">V</span></div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-label">Temperature</div>
+                                <div class="metric-value" style="${temp > 70 ? 'color: #ef4444' : ''}">${temp.toFixed(1)}<span class="metric-unit">°C</span></div>
+                            </div>
+                        </div>
+                        <div class="timestamp">Last update: ${formatTime(latest.timestamp)}</div>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('stations').innerHTML = html;
+        }
+
+        fetchData();
+        setInterval(fetchData, 2000);
+    </script>
+</body>
+</html>
