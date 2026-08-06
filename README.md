@@ -1,408 +1,293 @@
-\# EV Charging Station IoT Monitor
+# EV Charging Station IoT Monitor
 
+An IoT-based monitoring system that demonstrates communication between electric vehicle charging stations and a central server using the OCPP 1.6 protocol.
 
+The project simulates multiple charging stations, publishes charging data through MQTT, converts the data into OCPP messages, and displays station information on a real-time web dashboard.
 
-This project is a simple IoT-based EV charging station monitoring system built to understand how Electric Vehicle (EV) chargers communicate using the OCPP 1.6 protocol.
+---
 
+## Features
 
+* Simulates multiple EV charging stations
+* Generates real-time charging data
+* Uses MQTT for communication between simulators and gateways
+* Converts MQTT data into OCPP 1.6 messages
+* Displays live station status and telemetry
+* Simulates faults such as overheating and overcurrent
+* Provides REST API endpoints for station and transaction data
+* Supports future database integration
 
-The project simulates multiple charging stations, sends charging data over MQTT, converts it into OCPP messages, and displays the information on a real-time web dashboard.
+---
 
+## System Architecture
 
-
-\---
-
-
-
-\## Features
-
-
-
-\- Simulates multiple EV charging stations
-
-\- Generates real-time charging data
-
-\- Uses MQTT for communication
-
-\- Converts MQTT messages into OCPP 1.6 messages
-
-\- Displays live station status and telemetry on a dashboard
-
-\- Supports fault simulation such as overheating and overcurrent
-
-\- REST API for accessing station and transaction data
-
-\- Designed so that a database like PostgreSQL can be added later
-
-
-
-\---
-
-
-
-\## System Architecture
-
-
-
+```text
+Python Charger Simulator
+          │
+          │ MQTT
+          ▼
+  Eclipse Mosquitto
+          │
+          │ MQTT
+          ▼
+     OCPP Gateway
+          │
+          │ OCPP 1.6 over WebSocket
+          ▼
+    Node.js Backend
+          │
+          │ REST API
+          ▼
+      Web Dashboard
 ```
 
-Simulator (Python)
+### Data Flow
 
-&#x20;       │
+1. The charger simulator generates charging and status data.
+2. The data is published to the MQTT broker.
+3. The OCPP gateway receives the MQTT messages.
+4. The gateway converts the data into OCPP 1.6 messages.
+5. The backend receives the OCPP messages through WebSocket connections.
+6. The dashboard retrieves and displays the latest data using the REST API.
 
-&#x20;     MQTT
+---
 
-&#x20;       │
+## Technologies Used
 
-&#x20;       ▼
+| Component         | Technology                          |
+| ----------------- | ----------------------------------- |
+| Charger Simulator | Python 3                            |
+| MQTT Broker       | Eclipse Mosquitto                   |
+| OCPP Gateway      | Python, Paho MQTT, WebSocket Client |
+| Backend           | Node.js, Express, WebSocket         |
+| Dashboard         | HTML, CSS, JavaScript               |
+| Container Runtime | Docker                              |
 
-&#x20;Eclipse Mosquitto
+---
 
-&#x20;       │
+## Project Structure
 
-&#x20;       ▼
-
-&#x20;OCPP Gateway
-
-&#x20;       │
-
-&#x20;  WebSocket
-
-&#x20;       │
-
-&#x20;       ▼
-
-&#x20;Node.js Backend
-
-&#x20;       │
-
-&#x20;   REST API
-
-&#x20;       │
-
-&#x20;       ▼
-
-&#x20;Dashboard
-
-```
-
-
-
-\---
-
-
-
-\## Technologies Used
-
-
-
-| Component | Technology |
-
-|-----------|------------|
-
-| Simulator | Python 3 |
-
-| MQTT Broker | Eclipse Mosquitto (Docker) |
-
-| Gateway | Python + paho-mqtt |
-
-| Backend | Node.js, Express, WebSocket |
-
-| Dashboard | HTML, CSS, JavaScript |
-
-
-
-\---
-
-
-
-\## Project Structure
-
-
-
-```
-
-ev-charging-project/
-
+```text
+ev-charging-monitor/
 ├── simulator/
-
-│   └── charger\_simulator.py
-
+│   └── charger_simulator.py
 ├── gateway/
-
-│   └── ocpp\_gateway.py
-
+│   └── ocpp_gateway.py
 ├── backend/
-
 │   ├── server.js
-
 │   └── package.json
-
 ├── dashboard/
-
 │   └── index.html
-
 ├── .gitignore
-
 └── README.md
-
 ```
 
+---
 
+## Prerequisites
 
-\---
+Install the following software before running the project:
 
+* Python 3.12 or later
+* Node.js 20 or later
+* Docker Desktop
+* Git
 
+---
 
-\## Prerequisites
+## Installation
 
-
-
-Before running the project, make sure you have:
-
-
-
-\- Python 3.12 or later
-
-\- Node.js 20 or later
-
-\- Docker Desktop
-
-
-
-\---
-
-
-
-\## Installation
-
-
-
-Clone the repository:
-
-
+### 1. Clone the repository
 
 ```bash
-
 git clone https://github.com/shrawan-kumawat/ev-charging-monitor.git
-
 cd ev-charging-monitor
-
 ```
 
-
-
-Install the Python packages:
-
-
+### 2. Install the Python packages
 
 ```bash
-
 pip install paho-mqtt websocket-client
-
 ```
 
-
-
-Install the backend dependencies:
-
-
+### 3. Install the backend dependencies
 
 ```bash
-
 cd backend
-
 npm install
-
+cd ..
 ```
 
-
-
-Start the MQTT broker:
-
-
+### 4. Start the MQTT broker
 
 ```bash
-
 docker run -d --name mosquitto -p 1883:1883 eclipse-mosquitto
-
 ```
 
-
-
-\---
-
-
-
-\## Running the Project
-
-
-
-\### Start the backend
-
-
+If the Mosquitto container already exists, start it with:
 
 ```bash
+docker start mosquitto
+```
 
+---
+
+## Running the Project
+
+Run each component in a separate terminal.
+
+### 1. Start the backend
+
+```bash
 cd backend
-
 node server.js
-
 ```
 
+The backend runs on:
 
+```text
+http://localhost:8080
+```
 
-\### Start the gateways
+### 2. Start the OCPP gateways
 
+Open a separate terminal for each charging station.
 
+**Station CS-001**
 
 ```bash
-
 cd gateway
-
-
-
-python ocpp\_gateway.py --station-id CS-001 --ws-url ws://localhost:8080/ocpp/CS-001
-
-
-
-python ocpp\_gateway.py --station-id CS-002 --ws-url ws://localhost:8080/ocpp/CS-002
-
-
-
-python ocpp\_gateway.py --station-id CS-003 --ws-url ws://localhost:8080/ocpp/CS-003
-
+python ocpp_gateway.py --station-id CS-001 --ws-url ws://localhost:8080/ocpp/CS-001
 ```
 
-
-
-\### Start the dashboard
-
-
+**Station CS-002**
 
 ```bash
+cd gateway
+python ocpp_gateway.py --station-id CS-002 --ws-url ws://localhost:8080/ocpp/CS-002
+```
 
+**Station CS-003**
+
+```bash
+cd gateway
+python ocpp_gateway.py --station-id CS-003 --ws-url ws://localhost:8080/ocpp/CS-003
+```
+
+### 3. Start the dashboard
+
+```bash
 cd dashboard
-
 npx serve . -l 3001
-
 ```
 
+Open the dashboard at:
 
+```text
+http://localhost:3001
+```
 
-\### Start the simulators
+### 4. Start the charger simulators
 
+Open a separate terminal for each simulator.
 
+**Station CS-001 — Normal operation**
 
 ```bash
-
 cd simulator
-
-
-
-python charger\_simulator.py --id CS-001 --scenario normal
-
-
-
-python charger\_simulator.py --id CS-002 --scenario normal
-
-
-
-python charger\_simulator.py --id CS-003 --scenario fault\_heat
-
+python charger_simulator.py --id CS-001 --scenario normal
 ```
 
+**Station CS-002 — Normal operation**
 
-
-Open the dashboard in your browser:
-
-
-
+```bash
+cd simulator
+python charger_simulator.py --id CS-002 --scenario normal
 ```
 
-http://localhost:3001
+**Station CS-003 — Overheating fault**
 
+```bash
+cd simulator
+python charger_simulator.py --id CS-003 --scenario fault_heat
 ```
 
+---
 
+## API Endpoints
 
-\---
+| Method | Endpoint                    | Description                              |
+| ------ | --------------------------- | ---------------------------------------- |
+| `GET`  | `/api/stations`             | Returns all charging stations            |
+| `GET`  | `/api/telemetry/:stationId` | Returns telemetry for a specific station |
+| `GET`  | `/api/transactions`         | Returns charging transaction data        |
 
+### Example Requests
 
+Get all charging stations:
 
-\## API Endpoints
+```bash
+curl http://localhost:8080/api/stations
+```
 
+Get telemetry for station `CS-001`:
 
+```bash
+curl http://localhost:8080/api/telemetry/CS-001
+```
 
-| Method | Endpoint | Description |
+Get all transactions:
 
-|--------|----------|-------------|
+```bash
+curl http://localhost:8080/api/transactions
+```
 
-| GET | `/api/stations` | Returns all charging stations |
+---
 
-| GET | `/api/telemetry/:stationId` | Returns telemetry of a station |
+## Supported OCPP 1.6 Messages
 
-| GET | `/api/transactions` | Returns charging transactions |
+The gateway supports the following OCPP messages:
 
+* `BootNotification`
+* `StatusNotification`
+* `MeterValues`
+* `StartTransaction`
+* `StopTransaction`
 
+---
 
-\---
+## Fault Simulation
 
+The simulator can reproduce different charger operating conditions.
 
+| Scenario            | Description                          |
+| ------------------- | ------------------------------------ |
+| `normal`            | Simulates normal charging operation  |
+| `fault_heat`        | Simulates charger overheating        |
+| `fault_overcurrent` | Simulates excessive charging current |
 
-\## OCPP Messages
+Example:
 
+```bash
+python charger_simulator.py --id CS-001 --scenario fault_overcurrent
+```
 
+---
 
-The gateway currently supports the following OCPP 1.6 messages:
+## Possible Improvements
 
+* Add PostgreSQL or MongoDB storage
+* Add user authentication and authorization
+* Add remote start and stop controls
+* Add Docker Compose configuration
+* Add historical telemetry charts
+* Add alerts and notification support
+* Add automated tests
+* Add OCPP 2.0.1 support
+* Deploy the backend and dashboard to a cloud platform
 
+---
 
-\- BootNotification
+## License
 
-\- StatusNotification
-
-\- MeterValues
-
-\- StartTransaction
-
-\- StopTransaction
-
-
-
-\---
-
-
-
-\## Future Improvements
-
-
-
-Some features that can be added later are:
-
-
-
-\- PostgreSQL or MongoDB integration
-
-\- User authentication
-
-\- Remote charger control
-
-\- Docker Compose support
-
-\- OCPP 2.0.1 support
-
-\- Historical data visualization
-
-
-
-\---
-
-
-
-\## License
-
-
-
-This project is available under the MIT License.
-
+This project is licensed under the MIT License.
